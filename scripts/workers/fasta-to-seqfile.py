@@ -27,27 +27,40 @@ def main(argv):
   if len(argv) != 2:
     usage()
 
-  in_file = argv[0] 
+  in_dir  = argv[0] 
   out_dir = argv[1]
 
-  if not os.path.isfile(in_file): 
-    usage("Bad file (%s)" % in_file)
+  if not os.path.isdir(in_dir): 
+    usage("Bad dir (%s)" % in_dir)
+
+  files = os.listdir(in_dir)
+
+  if len(files) == 0:
+    usage("Empty dir (%s)" % in_dir)
 
   sc = SparkContext(appName="fasta-parser")
 
-  print("Processing %s" % in_file)
+  nfile = 0
+  for in_file in files:
+    nfile += 1
+    print("%5d: %s" % (nfile, in_file))
 
-  seqs = []
-  i    = 0
+    seqs = []
+    i    = 0
+    fh   = open(os.path.join(in_dir, in_file), "rU")
 
-  for record in SeqIO.parse(open(in_file, "rU"), "fasta") :
-    i += 1
-    seqs.append((i, str(record.seq)))
+    for record in SeqIO.parse(fh, "fasta") :
+      i += 1
+      seqs.append((i, str(record.seq)))
 
-  rdd = sc.parallelize(seqs)
-  dir = os.path.join(out_dir, os.path.basename(in_file))
+    rdd = sc.parallelize(seqs)
+    dir = os.path.join(out_dir, os.path.basename(in_file))
 
-  rdd.saveAsSequenceFile(dir)
+    rdd.saveAsSequenceFile(dir)
+
+  print('Done processing %s file%s' % 
+    (nfile, '' if (nfile == 1) else 's')
+  )
 
 # --------------------------------------------------
 if __name__ == "__main__":
